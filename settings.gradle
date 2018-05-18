@@ -1,0 +1,3 @@
+rootProject.name = 'aggregation-state-udf'
+include 'aggregation-state-udf-hive'
+include 'aggregation-state-udf-presto'

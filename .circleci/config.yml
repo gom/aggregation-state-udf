@@ -1,0 +1,80 @@
+# Java Gradle CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+    # specify the version you desire here
+    - image: circleci/openjdk:8-jdk
+
+    # Specify service dependencies here if necessary
+    # CircleCI maintains a library of pre-built images
+    # documented at https://circleci.com/docs/2.0/circleci-images/
+    # - image: circleci/postgres:9.4
+
+    working_directory: ~/repo
+
+    environment:
+      # Customize the JVM maximum heap limit
+      JVM_OPTS: -Xmx3200m
+      TERM: dumb
+
+    steps:
+    - checkout
+
+    # Download and cache dependencies
+    - restore_cache:
+        keys:
+        - v1-dependencies-{{ checksum "build.gradle" }}
+        # fallback to using the latest cache if no exact match is found
+        - v1-dependencies-
+
+    - run: gradle dependencies
+
+    - save_cache:
+        paths:
+        - ~/.gradle
+        key: v1-dependencies-{{ checksum "build.gradle" }}
+
+    # run tests!
+    - run: gradle shadow
+
+    - store_artifacts:
+        path: aggregation-state-udf-hive/build/libs/
+        destination: jars
+
+    - store_artifacts:
+        path: aggregation-state-udf-presto/build/libs/
+        destination: jars
+
+    - persist_to_workspace:
+        root: .
+        paths:
+          - aggregation-state-udf-hive/build/libs/*
+          - aggregation-state-udf-presto/build/libs/*
+
+  deploy:
+    docker:
+      - image: circleci/golang:1.9
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: "Publish Release on Github"
+          command: |
+            go get github.com/tcnksm/ghr
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete 0.1 ./artifacts/
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
