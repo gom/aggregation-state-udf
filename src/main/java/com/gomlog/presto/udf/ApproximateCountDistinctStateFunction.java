@@ -2,6 +2,7 @@ package com.gomlog.presto.udf;
 
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
+import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.block.BlockBuilder;
@@ -129,15 +130,15 @@ public final class ApproximateCountDistinctStateFunction {
         }
     }
 
-    @OutputFunction(StandardTypes.BIGINT)
+    @OutputFunction(StandardTypes.VARCHAR)
     public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out)
     {
         HyperLogLog hyperLogLog = state.getHyperLogLog();
         if (hyperLogLog == null) {
-            BIGINT.writeLong(out, 0);
+            VARCHAR.writeString(out, "");
         }
         else {
-            BIGINT.writeLong(out, hyperLogLog.cardinality());
+            VARCHAR.writeSlice(out, hyperLogLog.serialize());
         }
     }
 }
