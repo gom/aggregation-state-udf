@@ -1,4 +1,4 @@
-package com.gomlog.presto.udf;
+package com.gomlog.udf.presto;
 
 import static com.facebook.presto.spi.type.HyperLogLogType.HYPER_LOG_LOG;
 

@@ -1,4 +1,4 @@
-package com.gomlog.presto.udf;
+package com.gomlog.udf.presto;
 
 import com.facebook.presto.spi.function.AccumulatorState;
 import com.facebook.presto.spi.function.AccumulatorStateMetadata;

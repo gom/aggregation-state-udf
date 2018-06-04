@@ -1,7 +1,6 @@
-package com.gomlog.presto.udf;
+package com.gomlog.udf.presto;
 
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
-import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 
 import com.facebook.presto.spi.PrestoException;

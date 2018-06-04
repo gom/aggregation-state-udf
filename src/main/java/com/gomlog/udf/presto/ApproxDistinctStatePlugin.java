@@ -1,4 +1,4 @@
-package com.gomlog.presto.udf;
+package com.gomlog.udf.presto;
 
 import java.util.Set;
 

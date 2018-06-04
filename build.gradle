@@ -1,4 +1,4 @@
-group "com.gomlog.presto.udf"
+group "com.gomlog.udf.presto"
 version "1.0-SNAPSHOT"
 
 apply plugin: 'java'
