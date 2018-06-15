@@ -10,13 +10,17 @@ repositories {
     mavenCentral()
 }
 
-def prestoVersion = 0.201
+ext {
+    prestoVersion = 0.201
+    guavaVersion = 25.1
+    airliftSliceVersion = 0.33
+}
 
 dependencies {
     compile "com.facebook.presto:presto-spi:${prestoVersion}"
     compile "com.facebook.presto:presto-array:${prestoVersion}"
-    compile "com.google.guava:guava:25.1-jre"
-    compile "io.airlift:slice:0.33"
+    compile "com.google.guava:guava:${guavaVersion}-jre"
+    compile "io.airlift:slice:${airliftSliceVersion}"
     compile "io.airlift:stats:0.168"
 
     compileOnly "org.projectlombok:lombok:1.16.20"
