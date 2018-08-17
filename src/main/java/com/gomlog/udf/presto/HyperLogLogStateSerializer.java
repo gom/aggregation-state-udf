@@ -7,8 +7,6 @@ import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.function.AccumulatorStateSerializer;
 import com.facebook.presto.spi.type.Type;
 
-import io.airlift.stats.cardinality.HyperLogLog;
-
 public class HyperLogLogStateSerializer
         implements AccumulatorStateSerializer<HyperLogLogState>
 {
@@ -32,6 +30,6 @@ public class HyperLogLogStateSerializer
     @Override
     public void deserialize(Block block, int index, HyperLogLogState state)
     {
-        state.setHyperLogLog(HyperLogLog.newInstance(HYPER_LOG_LOG.getSlice(block, index)));
+        state.setHyperLogLog(new HllBuffer(HYPER_LOG_LOG.getSlice(block, index)));
     }
 }

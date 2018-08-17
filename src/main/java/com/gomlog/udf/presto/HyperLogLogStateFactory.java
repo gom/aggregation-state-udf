@@ -8,8 +8,6 @@ import com.facebook.presto.array.ObjectBigArray;
 import com.facebook.presto.spi.function.AccumulatorStateFactory;
 import com.facebook.presto.spi.function.GroupedAccumulatorState;
 
-import io.airlift.stats.cardinality.HyperLogLog;
-
 public class HyperLogLogStateFactory
         implements AccumulatorStateFactory<HyperLogLogState>
 {
@@ -41,7 +39,7 @@ public class HyperLogLogStateFactory
             implements GroupedAccumulatorState, HyperLogLogState
     {
         private static final int INSTANCE_SIZE = ClassLayout.parseClass(GroupedHyperLogLogState.class).instanceSize();
-        private final ObjectBigArray<HyperLogLog> hlls = new ObjectBigArray<>();
+        private final ObjectBigArray<HllBuffer> hlls = new ObjectBigArray<>();
         private long size;
         private long groupId;
 
@@ -63,13 +61,13 @@ public class HyperLogLogStateFactory
         }
 
         @Override
-        public HyperLogLog getHyperLogLog()
+        public HllBuffer getHyperLogLog()
         {
             return hlls.get(getGroupId());
         }
 
         @Override
-        public void setHyperLogLog(HyperLogLog value)
+        public void setHyperLogLog(HllBuffer value)
         {
             requireNonNull(value, "value is null");
             hlls.set(getGroupId(), value);
@@ -92,16 +90,16 @@ public class HyperLogLogStateFactory
             implements HyperLogLogState
     {
         private static final int INSTANCE_SIZE = ClassLayout.parseClass(SingleHyperLogLogState.class).instanceSize();
-        private HyperLogLog hll;
+        private HllBuffer hll;
 
         @Override
-        public HyperLogLog getHyperLogLog()
+        public HllBuffer getHyperLogLog()
         {
             return hll;
         }
 
         @Override
-        public void setHyperLogLog(HyperLogLog value)
+        public void setHyperLogLog(HllBuffer value)
         {
             hll = value;
         }
@@ -117,7 +115,7 @@ public class HyperLogLogStateFactory
         {
             long estimatedSize = INSTANCE_SIZE;
             if (hll != null) {
-                estimatedSize += hll.estimatedInMemorySize();
+                estimatedSize += hll.sizeof();
             }
             return estimatedSize;
         }

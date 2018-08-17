@@ -1,8 +1,10 @@
 package com.gomlog.udf.presto;
 
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
+import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 
+import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.function.AggregationFunction;
@@ -17,127 +19,148 @@ import com.facebook.presto.spi.type.StandardTypes;
 import com.google.common.annotations.VisibleForTesting;
 
 import io.airlift.slice.Slice;
-import io.airlift.stats.cardinality.HyperLogLog;
 
 @AggregationFunction("approx_distinct_state")
 @Description("Returns approx distinct state strings")
 public final class ApproximateCountDistinctStateFunction {
 
-    static final double DEFAULT_STANDARD_ERROR = 0.023;
-    static final double LOWEST_MAX_STANDARD_ERROR = 0.0040625;
-    static final double HIGHEST_MAX_STANDARD_ERROR = 0.26000;
+    static final int DEFAULT_P = 15;
+    static final int DEFAULT_SP = 25;
 
     @InputFunction
-    public static void input(@AggregationState HyperLogLogState state, @SqlType(StandardTypes.BIGINT) long value)
-    {
-        input(state, value, DEFAULT_STANDARD_ERROR);
+    public static void input(@AggregationState HyperLogLogState state,
+                             @SqlType(StandardTypes.BIGINT) long value) {
+        input(state, value, DEFAULT_P);
     }
 
     @InputFunction
-    public static void input(@AggregationState HyperLogLogState state, @SqlType(StandardTypes.BIGINT) long value, @SqlType(StandardTypes.DOUBLE) double maxStandardError)
-    {
-        HyperLogLog hll = getOrCreateHyperLogLog(state, maxStandardError);
-        state.addMemoryUsage(-hll.estimatedInMemorySize());
-        hll.add(value);
-        state.addMemoryUsage(hll.estimatedInMemorySize());
+    public static void input(@AggregationState HyperLogLogState state,
+                             @SqlType(StandardTypes.BIGINT) long value, @SqlType(StandardTypes.INTEGER) int p) {
+        input(state, value, p, DEFAULT_SP);
     }
 
     @InputFunction
-    public static void input(@AggregationState HyperLogLogState state, @SqlType(StandardTypes.DOUBLE) double value)
-    {
-        input(state, value, DEFAULT_STANDARD_ERROR);
+    public static void input(@AggregationState HyperLogLogState state,
+                             @SqlType(StandardTypes.BIGINT) long value, @SqlType(StandardTypes.INTEGER) int p,
+                             @SqlType(StandardTypes.INTEGER) int sp) {
+        HllBuffer hll = getOrCreateHyperLogLog(state, p, sp);
+        state.addMemoryUsage(-hll.sizeof());
+        hll.offer(value);
+        state.addMemoryUsage(hll.sizeof());
     }
 
     @InputFunction
-    public static void input(@AggregationState HyperLogLogState state, @SqlType(StandardTypes.DOUBLE) double value, @SqlType(StandardTypes.DOUBLE) double maxStandardError)
-    {
-        input(state, Double.doubleToLongBits(value), maxStandardError);
+    public static void input(@AggregationState HyperLogLogState state,
+                             @SqlType(StandardTypes.DOUBLE) double value) {
+        input(state, value, DEFAULT_P);
+    }
+
+    @InputFunction
+    public static void input(@AggregationState HyperLogLogState state,
+                             @SqlType(StandardTypes.DOUBLE) double value,
+                             @SqlType(StandardTypes.INTEGER) int p) {
+        input(state, Double.doubleToLongBits(value), p, DEFAULT_SP);
+    }
+
+    @InputFunction
+    public static void input(@AggregationState HyperLogLogState state,
+                             @SqlType(StandardTypes.DOUBLE) double value, @SqlType(StandardTypes.INTEGER) int p,
+                             @SqlType(StandardTypes.INTEGER) int sp) {
+        input(state, Double.doubleToLongBits(value), p, sp);
     }
 
     @InputFunction
     @LiteralParameters("x")
-    public static void input(@AggregationState HyperLogLogState state, @SqlType("varchar(x)") Slice value)
-    {
-        input(state, value, DEFAULT_STANDARD_ERROR);
+    public static void input(@AggregationState HyperLogLogState state, @SqlType("varchar(x)") Slice value) {
+        input(state, value, DEFAULT_P);
     }
 
     @InputFunction
     @LiteralParameters("x")
-    public static void input(@AggregationState HyperLogLogState state, @SqlType("varchar(x)") Slice value, @SqlType(StandardTypes.DOUBLE) double maxStandardError)
-    {
-        inputBinary(state, value, maxStandardError);
+    public static void input(@AggregationState HyperLogLogState state, @SqlType("varchar(x)") Slice value,
+                             @SqlType(StandardTypes.INTEGER) int p) {
+        input(state, value, p, DEFAULT_SP);
     }
 
     @InputFunction
-    public static void inputBinary(@AggregationState HyperLogLogState state, @SqlType(StandardTypes.VARBINARY) Slice value)
-    {
-        inputBinary(state, value, DEFAULT_STANDARD_ERROR);
+    @LiteralParameters("x")
+    public static void input(@AggregationState HyperLogLogState state, @SqlType("varchar(x)") Slice value,
+                             @SqlType(StandardTypes.INTEGER) int p, @SqlType(StandardTypes.INTEGER) int sp) {
+        inputBinary(state, value, p, sp);
     }
 
     @InputFunction
-    public static void inputBinary(@AggregationState HyperLogLogState state, @SqlType(StandardTypes.VARBINARY) Slice value, @SqlType(StandardTypes.DOUBLE) double maxStandardError)
-    {
-        HyperLogLog hll = getOrCreateHyperLogLog(state, maxStandardError);
-        state.addMemoryUsage(-hll.estimatedInMemorySize());
-        hll.add(value);
-        state.addMemoryUsage(hll.estimatedInMemorySize());
+    public static void inputBinary(@AggregationState HyperLogLogState state,
+                                   @SqlType(StandardTypes.VARBINARY) Slice value) {
+        inputBinary(state, value, DEFAULT_P);
     }
 
-    static HyperLogLog getOrCreateHyperLogLog(HyperLogLogState state, double maxStandardError)
-    {
-        HyperLogLog hll = state.getHyperLogLog();
+    @InputFunction
+    public static void inputBinary(@AggregationState HyperLogLogState state,
+                                   @SqlType(StandardTypes.VARBINARY) Slice value,
+                                   @SqlType(StandardTypes.INTEGER) int p) {
+        inputBinary(state, value, p, DEFAULT_SP);
+    }
+
+    @InputFunction
+    public static void inputBinary(@AggregationState HyperLogLogState state,
+                                   @SqlType(StandardTypes.VARBINARY) Slice value,
+                                   @SqlType(StandardTypes.INTEGER) int p,
+                                   @SqlType(StandardTypes.INTEGER) int sp) {
+        HllBuffer hll = getOrCreateHyperLogLog(state, p, sp);
+        state.addMemoryUsage(-hll.sizeof());
+        hll.offer(value);
+        state.addMemoryUsage(hll.sizeof());
+    }
+
+    static HllBuffer getOrCreateHyperLogLog(HyperLogLogState state, int p, int sp) {
+        HllBuffer hll = state.getHyperLogLog();
         if (hll == null) {
-            hll = HyperLogLog.newInstance(standardErrorToBuckets(maxStandardError));
+            validateOptions(p, sp);
+            hll = new HllBuffer(p, sp);
             state.setHyperLogLog(hll);
-            state.addMemoryUsage(hll.estimatedInMemorySize());
+            state.addMemoryUsage(hll.sizeof());
         }
         return hll;
     }
 
     @VisibleForTesting
-    static int standardErrorToBuckets(double maxStandardError)
-    {
-
-        if(! (maxStandardError >= LOWEST_MAX_STANDARD_ERROR && maxStandardError <= HIGHEST_MAX_STANDARD_ERROR)) {
-            throw new PrestoException(INVALID_FUNCTION_ARGUMENT,
-                                      String.format("Max standard error must be in [%s, %s]: %s",
-                                                    LOWEST_MAX_STANDARD_ERROR, HIGHEST_MAX_STANDARD_ERROR,
-                                                    maxStandardError));
+    static void validateOptions(int p, int sp) {
+        if (p < 4 || p > sp && sp != 0) {
+            throw new PrestoException(INVALID_FUNCTION_ARGUMENT, "p must be between 4 and sp (inclusive)");
+        } else if (sp > 32) {
+            throw new PrestoException(INVALID_FUNCTION_ARGUMENT, "sp values greater than 32 not supported");
         }
-        return log2Ceiling((int) Math.ceil(1.0816 / (maxStandardError * maxStandardError)));
-    }
-
-    static int log2Ceiling(int value)
-    {
-        return Integer.highestOneBit(value - 1) << 1;
     }
 
     @CombineFunction
-    public static void combineState(@AggregationState HyperLogLogState state, @AggregationState HyperLogLogState otherState)
-    {
-        HyperLogLog input = otherState.getHyperLogLog();
+    public static void combineState(@AggregationState HyperLogLogState state,
+                                    @AggregationState HyperLogLogState otherState) {
+        HllBuffer input = otherState.getHyperLogLog();
 
-        HyperLogLog previous = state.getHyperLogLog();
+        HllBuffer previous = state.getHyperLogLog();
         if (previous == null) {
             state.setHyperLogLog(input);
-            state.addMemoryUsage(input.estimatedInMemorySize());
-        }
-        else {
-            state.addMemoryUsage(-previous.estimatedInMemorySize());
-            previous.mergeWith(input);
-            state.addMemoryUsage(previous.estimatedInMemorySize());
+            state.addMemoryUsage(input.sizeof());
+        } else {
+            state.addMemoryUsage(-previous.sizeof());
+            try {
+                previous.addAll(input);
+                state.addMemoryUsage(previous.sizeof());
+            } catch (CardinalityMergeException e) {
+                throw new PrestoException(NOT_SUPPORTED, e.getMessage());
+            }
+
         }
     }
 
     @OutputFunction(StandardTypes.VARCHAR)
-    public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out)
-    {
-        HyperLogLog hyperLogLog = state.getHyperLogLog();
-        if (hyperLogLog == null) {
+    public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out) {
+        HllBuffer hll = state.getHyperLogLog();
+        if (hll == null) {
             VARCHAR.writeString(out, "");
-        }
-        else {
-            VARCHAR.writeSlice(out, hyperLogLog.serialize());
+        } else {
+            VARCHAR.writeSlice(out, hll.serialize());
         }
     }
 }
