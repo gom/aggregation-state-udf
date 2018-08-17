@@ -25,7 +25,6 @@ dependencies {
     compile "com.facebook.presto:presto-array:${prestoVersion}"
     compile "com.google.guava:guava:${guavaVersion}-jre"
     compile "io.airlift:slice:${airliftSliceVersion}"
-    compile "io.airlift:stats:0.168"
 
     compile "com.clearspring.analytics:stream:${streamVersion}"
 
@@ -36,7 +35,6 @@ dependencies {
 shadowJar {
     dependencies {
         exclude dependency("com.facebook.presto:presto-spi:${prestoVersion}")
-        exclude dependency("com.facebook.presto:presto-array:${prestoVersion}")
     }
 }
 

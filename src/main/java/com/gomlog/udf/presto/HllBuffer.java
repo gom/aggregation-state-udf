@@ -1,5 +1,7 @@
 package com.gomlog.udf.presto;
 
+import static java.util.Objects.isNull;
+
 import java.io.IOException;
 
 import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
@@ -10,10 +12,6 @@ import io.airlift.slice.Slice;
 
 public class HllBuffer {
     private HyperLogLogPlus hll;
-
-    public HllBuffer(HyperLogLogPlus hll) {
-        this.hll = hll;
-    }
 
     public HllBuffer(int p, int sp) {
         this.hll = new HyperLogLogPlus.Builder(p, sp).build();
@@ -27,6 +25,10 @@ public class HllBuffer {
             hll = null;
         }
         this.hll = hll;
+    }
+
+    public boolean isEmpty() {
+        return isNull(this.hll);
     }
 
     public Slice serialize() {
@@ -59,5 +61,9 @@ public class HllBuffer {
 
     public void addAll(HllBuffer other) throws CardinalityMergeException {
         hll.addAll(other.getHll());
+    }
+
+    public long cardinality() {
+        return hll.cardinality();
     }
 }

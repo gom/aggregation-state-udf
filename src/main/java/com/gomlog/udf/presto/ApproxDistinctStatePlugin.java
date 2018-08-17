@@ -11,6 +11,7 @@ public class ApproxDistinctStatePlugin implements Plugin {
 
         return ImmutableSet.<Class<?>>builder()
                 .add(ApproximateCountDistinctStateFunction.class)
+                .add(ApproximateCountDistinctMergeFunction.class)
                 .build();
     }
 }

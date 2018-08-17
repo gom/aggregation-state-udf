@@ -115,7 +115,7 @@ public final class ApproximateCountDistinctStateFunction {
 
     static HllBuffer getOrCreateHyperLogLog(HyperLogLogState state, int p, int sp) {
         HllBuffer hll = state.getHyperLogLog();
-        if (hll == null) {
+        if (hll == null || hll.isEmpty()) {
             validateOptions(p, sp);
             hll = new HllBuffer(p, sp);
             state.setHyperLogLog(hll);
@@ -157,7 +157,7 @@ public final class ApproximateCountDistinctStateFunction {
     @OutputFunction(StandardTypes.VARCHAR)
     public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out) {
         HllBuffer hll = state.getHyperLogLog();
-        if (hll == null) {
+        if (hll == null || hll.isEmpty()) {
             VARCHAR.writeString(out, "");
         } else {
             VARCHAR.writeSlice(out, hll.serialize());
