@@ -2,7 +2,7 @@ package com.gomlog.udf.presto;
 
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
-import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
+import static com.facebook.presto.spi.type.VarbinaryType.VARBINARY;
 
 import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
 import com.facebook.presto.spi.PrestoException;
@@ -19,6 +19,7 @@ import com.facebook.presto.spi.type.StandardTypes;
 import com.google.common.annotations.VisibleForTesting;
 
 import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 
 @AggregationFunction("approx_distinct_state")
 @Description("Returns approx distinct state strings")
@@ -154,13 +155,13 @@ public final class ApproximateCountDistinctStateFunction {
         }
     }
 
-    @OutputFunction(StandardTypes.VARCHAR)
+    @OutputFunction(StandardTypes.VARBINARY)
     public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out) {
         HllBuffer hll = state.getHyperLogLog();
         if (hll == null || hll.isEmpty()) {
-            VARCHAR.writeString(out, "");
+            VARBINARY.writeSlice(out, Slices.allocate(0));
         } else {
-            VARCHAR.writeSlice(out, hll.serialize());
+            VARBINARY.writeSlice(out, hll.serialize());
         }
     }
 }

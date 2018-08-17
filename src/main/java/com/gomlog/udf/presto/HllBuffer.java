@@ -48,7 +48,7 @@ public class HllBuffer {
     }
 
     public int sizeof() {
-        return hll.sizeof();
+        return isEmpty() ? 0 : hll.sizeof();
     }
 
     public boolean offer(Object obj) {

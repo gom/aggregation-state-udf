@@ -37,14 +37,3 @@ shadowJar {
         exclude dependency("com.facebook.presto:presto-spi:${prestoVersion}")
     }
 }
-
-def dependJarCopyTo = "lib/"
-task cleanDeps(type: Delete) {
-    delete dependJarCopyTo
-}
-
-task copyDeps(type: Copy) {
-    from configurations.compile
-    into dependJarCopyTo
-}
-copyDeps.dependsOn cleanDeps
