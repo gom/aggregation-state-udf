@@ -34,7 +34,7 @@ public class HyperLogLogStateFactory
             implements GroupedAccumulatorState, HyperLogLogState {
         private static final int INSTANCE_SIZE = ClassLayout.parseClass(GroupedHyperLogLogState.class)
                                                             .instanceSize();
-        private final ObjectBigArray<HllBuffer> hlls = new ObjectBigArray<>();
+        private final ObjectBigArray<HLLBuffer> hlls = new ObjectBigArray<>();
         private long size;
         private long groupId;
 
@@ -53,12 +53,12 @@ public class HyperLogLogStateFactory
         }
 
         @Override
-        public HllBuffer getHyperLogLog() {
+        public HLLBuffer getHyperLogLog() {
             return hlls.get(getGroupId());
         }
 
         @Override
-        public void setHyperLogLog(HllBuffer value) {
+        public void setHyperLogLog(HLLBuffer value) {
             requireNonNull(value, "value is null");
             hlls.set(getGroupId(), value);
         }
@@ -78,15 +78,15 @@ public class HyperLogLogStateFactory
             implements HyperLogLogState {
         private static final int INSTANCE_SIZE = ClassLayout.parseClass(SingleHyperLogLogState.class)
                                                             .instanceSize();
-        private HllBuffer hll;
+        private HLLBuffer hll;
 
         @Override
-        public HllBuffer getHyperLogLog() {
+        public HLLBuffer getHyperLogLog() {
             return hll;
         }
 
         @Override
-        public void setHyperLogLog(HllBuffer value) {
+        public void setHyperLogLog(HLLBuffer value) {
             hll = value;
         }
 

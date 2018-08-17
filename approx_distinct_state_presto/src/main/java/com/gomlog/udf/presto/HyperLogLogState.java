@@ -9,9 +9,9 @@ import lombok.NonNull;
         stateFactoryClass = HyperLogLogStateFactory.class)
 public interface HyperLogLogState extends AccumulatorState {
     @NonNull
-    HllBuffer getHyperLogLog();
+    HLLBuffer getHyperLogLog();
 
-    void setHyperLogLog(HllBuffer value);
+    void setHyperLogLog(HLLBuffer value);
 
     void addMemoryUsage(int value);
 }

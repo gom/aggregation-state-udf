@@ -31,13 +31,13 @@ public final class ApproximateCountDistinctMergeFunction {
     @InputFunction
     public static void inputBinary(@AggregationState HyperLogLogState state,
                                    @SqlType(StandardTypes.VARBINARY) Slice value) {
-        HllBuffer hll = state.getHyperLogLog();
+        HLLBuffer hll = state.getHyperLogLog();
         if (hll == null || hll.isEmpty()) {
-            hll = new HllBuffer(value);
+            hll = new HLLBuffer(value);
             state.setHyperLogLog(hll);
         } else {
             state.addMemoryUsage(-hll.sizeof());
-            HllBuffer new_hll = new HllBuffer(value);
+            HLLBuffer new_hll = new HLLBuffer(value);
             mergeHll(hll, new_hll);
         }
         state.addMemoryUsage(hll.sizeof());
@@ -46,9 +46,9 @@ public final class ApproximateCountDistinctMergeFunction {
     @CombineFunction
     public static void combineState(@AggregationState HyperLogLogState state,
                                     @AggregationState HyperLogLogState otherState) {
-        HllBuffer input = otherState.getHyperLogLog();
+        HLLBuffer input = otherState.getHyperLogLog();
 
-        HllBuffer previous = state.getHyperLogLog();
+        HLLBuffer previous = state.getHyperLogLog();
         if (previous == null || previous.isEmpty()) {
             state.setHyperLogLog(input);
             state.addMemoryUsage(input.sizeof());
@@ -59,7 +59,7 @@ public final class ApproximateCountDistinctMergeFunction {
         }
     }
 
-    public static void mergeHll(HllBuffer current, HllBuffer other) {
+    public static void mergeHll(HLLBuffer current, HLLBuffer other) {
         try {
             current.addAll(other);
         } catch (CardinalityMergeException e) {
@@ -69,7 +69,7 @@ public final class ApproximateCountDistinctMergeFunction {
 
     @OutputFunction(StandardTypes.BIGINT)
     public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out) {
-        HllBuffer hll = state.getHyperLogLog();
+        HLLBuffer hll = state.getHyperLogLog();
         if (hll == null || hll.isEmpty()) {
             BIGINT.writeLong(out, 0);
         } else {

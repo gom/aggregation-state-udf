@@ -24,6 +24,6 @@ public class HyperLogLogStateSerializer implements AccumulatorStateSerializer<Hy
 
     @Override
     public void deserialize(Block block, int index, HyperLogLogState state) {
-        state.setHyperLogLog(new HllBuffer(HYPER_LOG_LOG.getSlice(block, index)));
+        state.setHyperLogLog(new HLLBuffer(HYPER_LOG_LOG.getSlice(block, index)));
     }
 }

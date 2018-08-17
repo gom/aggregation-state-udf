@@ -10,14 +10,14 @@ import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
 import io.airlift.slice.DynamicSliceOutput;
 import io.airlift.slice.Slice;
 
-public class HllBuffer {
+public class HLLBuffer {
     private HyperLogLogPlus hll;
 
-    public HllBuffer(int p, int sp) {
+    public HLLBuffer(int p, int sp) {
         this.hll = new HyperLogLogPlus.Builder(p, sp).build();
     }
 
-    public HllBuffer(Slice serialized) {
+    public HLLBuffer(Slice serialized) {
         HyperLogLogPlus hll;
         try {
             hll = HyperLogLogPlus.Builder.build(serialized.getBytes());
@@ -59,7 +59,7 @@ public class HllBuffer {
         return this.hll;
     }
 
-    public void addAll(HllBuffer other) throws CardinalityMergeException {
+    public void addAll(HLLBuffer other) throws CardinalityMergeException {
         hll.addAll(other.getHll());
     }
 

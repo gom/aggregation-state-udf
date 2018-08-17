@@ -44,7 +44,7 @@ public final class ApproximateCountDistinctStateFunction {
     public static void input(@AggregationState HyperLogLogState state,
                              @SqlType(StandardTypes.BIGINT) long value, @SqlType(StandardTypes.INTEGER) int p,
                              @SqlType(StandardTypes.INTEGER) int sp) {
-        HllBuffer hll = getOrCreateHyperLogLog(state, p, sp);
+        HLLBuffer hll = getOrCreateHyperLogLog(state, p, sp);
         state.addMemoryUsage(-hll.sizeof());
         hll.offer(value);
         state.addMemoryUsage(hll.sizeof());
@@ -108,17 +108,17 @@ public final class ApproximateCountDistinctStateFunction {
                                    @SqlType(StandardTypes.VARBINARY) Slice value,
                                    @SqlType(StandardTypes.INTEGER) int p,
                                    @SqlType(StandardTypes.INTEGER) int sp) {
-        HllBuffer hll = getOrCreateHyperLogLog(state, p, sp);
+        HLLBuffer hll = getOrCreateHyperLogLog(state, p, sp);
         state.addMemoryUsage(-hll.sizeof());
         hll.offer(value);
         state.addMemoryUsage(hll.sizeof());
     }
 
-    static HllBuffer getOrCreateHyperLogLog(HyperLogLogState state, int p, int sp) {
-        HllBuffer hll = state.getHyperLogLog();
+    static HLLBuffer getOrCreateHyperLogLog(HyperLogLogState state, int p, int sp) {
+        HLLBuffer hll = state.getHyperLogLog();
         if (hll == null || hll.isEmpty()) {
             validateOptions(p, sp);
-            hll = new HllBuffer(p, sp);
+            hll = new HLLBuffer(p, sp);
             state.setHyperLogLog(hll);
             state.addMemoryUsage(hll.sizeof());
         }
@@ -137,9 +137,9 @@ public final class ApproximateCountDistinctStateFunction {
     @CombineFunction
     public static void combineState(@AggregationState HyperLogLogState state,
                                     @AggregationState HyperLogLogState otherState) {
-        HllBuffer input = otherState.getHyperLogLog();
+        HLLBuffer input = otherState.getHyperLogLog();
 
-        HllBuffer previous = state.getHyperLogLog();
+        HLLBuffer previous = state.getHyperLogLog();
         if (previous == null) {
             state.setHyperLogLog(input);
             state.addMemoryUsage(input.sizeof());
@@ -157,7 +157,7 @@ public final class ApproximateCountDistinctStateFunction {
 
     @OutputFunction(StandardTypes.VARBINARY)
     public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out) {
-        HllBuffer hll = state.getHyperLogLog();
+        HLLBuffer hll = state.getHyperLogLog();
         if (hll == null || hll.isEmpty()) {
             VARBINARY.writeSlice(out, Slices.allocate(0));
         } else {
