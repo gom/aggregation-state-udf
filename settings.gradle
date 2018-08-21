@@ -1,2 +1,3 @@
 rootProject.name = 'approx_distinct_state'
 include 'approx_distinct_state_presto'
+include 'approx_distinct_state_hive'

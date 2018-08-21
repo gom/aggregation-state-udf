@@ -1,0 +1,31 @@
+plugins {
+    id "java"
+    id "idea"
+    id "com.github.johnrengelman.shadow" version "2.0.4"
+}
+
+sourceCompatibility = 1.8
+group "com.gomlog.udf.hive"
+
+ext {
+    hadoopVersion = "2.7.3"
+    hiveVersion = "1.2.1"
+    streamVersion = "2.9.6"
+    lombokVersion = "1.18.2"
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'http://conjars.org/repo' }
+}
+
+dependencies {
+    compile "com.clearspring.analytics:stream:${streamVersion}"
+
+    compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+    compileOnly "org.apache.hive:hive-exec:${hiveVersion}"
+
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
