@@ -19,7 +19,7 @@ import com.facebook.presto.spi.type.StandardTypes;
 import io.airlift.slice.Slice;
 
 @AggregationFunction("approx_distinct_merge")
-@Description("Returns cardinality of merging appro_distinct_state strings")
+@Description("Returns cardinality of merging approx_distinct_state binary")
 public final class ApproximateCountDistinctMergeFunction {
 
     @InputFunction

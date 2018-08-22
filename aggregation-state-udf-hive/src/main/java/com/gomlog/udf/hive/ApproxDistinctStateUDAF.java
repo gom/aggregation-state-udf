@@ -14,19 +14,19 @@ import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.udf.generic.AbstractGenericUDAFResolver;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.BinaryObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
-import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.BytesWritable;
 
 import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
 import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
 import com.google.common.base.Preconditions;
 
-@Description(name = "approx_distinct_merge", value = "_FUNC_(expr x)"
-                                                     + " - Returns an approximation of count(DISTINCT x) using HyperLogLogPlus algorithm")
-public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
+@Description(name = "approx_distinct_state", value = "_FUNC_(expr x)"
+                                                     + " - Returns an approximation of count(DISTINCT x) state using HyperLogLogPlus algorithm")
+public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
 
     @Override
     public GenericUDAFEvaluator getEvaluator(@Nonnull TypeInfo[] typeInfo)
@@ -49,19 +49,18 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             this.mapredContext = mapredContext;
         }
 
-        private BinaryObjectInspector origInputOI;
+        private ObjectInspector origInputOI;
         private BinaryObjectInspector mergeInputOI;
 
         @Override
         public ObjectInspector init(@Nonnull Mode mode, @Nonnull ObjectInspector[] parameters)
                 throws HiveException {
             assert (parameters.length == 1 || parameters.length == 2) : parameters.length;
-            assert(parameters[0].getCategory() == Category.PRIMITIVE);
             super.init(mode, parameters);
 
             // initialize input
             if (mode == Mode.PARTIAL1 || mode == Mode.COMPLETE) {// from original data
-                this.origInputOI = asBinaryOI(parameters[0]);
+                this.origInputOI = parameters[0];
             } else {// from partial aggregation
                 this.mergeInputOI = asBinaryOI(parameters[0]);
             }
@@ -71,7 +70,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             if (mode == Mode.PARTIAL1 || mode == Mode.PARTIAL2) {// terminatePartial
                 outputOI = PrimitiveObjectInspectorFactory.javaByteArrayObjectInspector;
             } else {// terminate
-                outputOI = PrimitiveObjectInspectorFactory.writableLongObjectInspector;
+                outputOI = PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
             }
             return outputOI;
         }
@@ -106,9 +105,10 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             }
 
             HLLBuffer buf = (HLLBuffer) agg;
-            byte[] data = origInputOI.getPrimitiveJavaObject(parameters[0]);
+            Object value =
+                    ObjectInspectorUtils.copyToStandardJavaObject(parameters[0], origInputOI);
             Preconditions.checkNotNull(buf.hll, HiveException.class);
-            mergeHll(buf, data);
+            buf.hll.offer(value);
         }
 
         @SuppressWarnings("deprecation")
@@ -135,23 +135,19 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             }
 
             byte[] data = mergeInputOI.getPrimitiveJavaObject(partial);
-            final HLLBuffer buf = (HLLBuffer) agg;
-            mergeHll(buf, data);
-        }
-
-        private void mergeHll(HLLBuffer orig, byte[] otherData) throws HiveException {
             final HyperLogLogPlus otherHLL;
             try {
-                otherHLL = HyperLogLogPlus.Builder.build(otherData);
+                otherHLL = HyperLogLogPlus.Builder.build(data);
             } catch (IOException e) {
                 throw new HiveException("Failed to build other HLL");
             }
 
-            if (orig.hll == null) {
-                orig.hll = otherHLL;
+            final HLLBuffer buf = (HLLBuffer) agg;
+            if (buf.hll == null) {
+                buf.hll = otherHLL;
             } else {
                 try {
-                    orig.hll.addAll(otherHLL);
+                    buf.hll.addAll(otherHLL);
                 } catch (CardinalityMergeException e) {
                     throw new HiveException("Failed to merge HLL");
                 }
@@ -160,11 +156,16 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
 
         @SuppressWarnings("deprecation")
         @Override
-        public LongWritable terminate(@Nonnull AggregationBuffer agg) throws HiveException {
+        public BytesWritable terminate(@Nonnull AggregationBuffer agg) throws HiveException {
             HLLBuffer buf = (HLLBuffer) agg;
 
-            long cardinality = (buf.hll == null) ? 0L : buf.hll.cardinality();
-            return new LongWritable(cardinality);
+            byte[] state;
+            try {
+                state = (buf.hll == null) ? new byte[0] : buf.hll.getBytes();
+            } catch (IOException e) {
+                throw new HiveException(e);
+            }
+            return new BytesWritable(state);
         }
 
     }

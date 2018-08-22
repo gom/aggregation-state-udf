@@ -22,7 +22,7 @@ import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 
 @AggregationFunction("approx_distinct_state")
-@Description("Returns approx distinct state strings")
+@Description("Returns approx distinct state binary")
 public final class ApproximateCountDistinctStateFunction {
 
     static final int DEFAULT_P = 15;
