@@ -1,10 +1,7 @@
 package com.gomlog.udf.presto;
 
-import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
 
-import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
-import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.function.AggregationFunction;
 import com.facebook.presto.spi.function.AggregationState;
@@ -17,6 +14,7 @@ import com.facebook.presto.spi.function.SqlType;
 import com.facebook.presto.spi.type.StandardTypes;
 
 import io.airlift.slice.Slice;
+import io.airlift.stats.cardinality.HyperLogLog;
 
 @AggregationFunction("approx_distinct_merge")
 @Description("Returns cardinality of merging approx_distinct_state binary")
@@ -31,46 +29,21 @@ public final class ApproximateCountDistinctMergeFunction {
     @InputFunction
     public static void inputBinary(@AggregationState HyperLogLogState state,
                                    @SqlType(StandardTypes.VARBINARY) Slice value) {
-        HLLBuffer hll = state.getHyperLogLog();
-        if (hll == null || hll.isEmpty()) {
-            hll = new HLLBuffer(value);
-            state.setHyperLogLog(hll);
-        } else {
-            state.addMemoryUsage(-hll.sizeof());
-            HLLBuffer new_hll = new HLLBuffer(value);
-            mergeHll(hll, new_hll);
-        }
-        state.addMemoryUsage(hll.sizeof());
+        HyperLogLog input = HyperLogLog.newInstance(value);
+        Utils.mergeHll(state, input);
     }
 
     @CombineFunction
     public static void combineState(@AggregationState HyperLogLogState state,
                                     @AggregationState HyperLogLogState otherState) {
-        HLLBuffer input = otherState.getHyperLogLog();
-
-        HLLBuffer previous = state.getHyperLogLog();
-        if (previous == null || previous.isEmpty()) {
-            state.setHyperLogLog(input);
-            state.addMemoryUsage(input.sizeof());
-        } else {
-            state.addMemoryUsage(-previous.sizeof());
-            mergeHll(previous, input);
-            state.addMemoryUsage(previous.sizeof());
-        }
-    }
-
-    public static void mergeHll(HLLBuffer current, HLLBuffer other) {
-        try {
-            current.addAll(other);
-        } catch (CardinalityMergeException e) {
-            throw new PrestoException(NOT_SUPPORTED, e.getMessage());
-        }
+        HyperLogLog input = otherState.getHyperLogLog();
+        Utils.mergeHll(state, input);
     }
 
     @OutputFunction(StandardTypes.BIGINT)
     public static void evaluateFinal(@AggregationState HyperLogLogState state, BlockBuilder out) {
-        HLLBuffer hll = state.getHyperLogLog();
-        if (hll == null || hll.isEmpty()) {
+        HyperLogLog hll = state.getHyperLogLog();
+        if (hll == null) {
             BIGINT.writeLong(out, 0);
         } else {
             BIGINT.writeLong(out, hll.cardinality());

@@ -1,13 +1,10 @@
 package com.gomlog.udf.hive;
 
-import java.io.IOException;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.MapredContext;
-import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
@@ -20,9 +17,10 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.io.BytesWritable;
 
-import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
-import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
 import com.google.common.base.Preconditions;
+
+import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 
 @Description(name = "approx_distinct_state", value = "_FUNC_(expr x)"
                                                      + " - Returns an approximation of count(DISTINCT x) state using HyperLogLogPlus algorithm")
@@ -62,7 +60,7 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
             if (mode == Mode.PARTIAL1 || mode == Mode.COMPLETE) {// from original data
                 this.origInputOI = parameters[0];
             } else {// from partial aggregation
-                this.mergeInputOI = asBinaryOI(parameters[0]);
+                this.mergeInputOI = Utils.asBinaryOI(parameters[0]);
             }
 
             // initialize output
@@ -73,15 +71,6 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
                 outputOI = PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
             }
             return outputOI;
-        }
-
-        @Nonnull
-        private BinaryObjectInspector asBinaryOI(@Nonnull final ObjectInspector argOI)
-                throws UDFArgumentException {
-            if (!"binary".equals(argOI.getTypeName())) {
-                throw new UDFArgumentException("Argument type must be Binary: " + argOI.getTypeName());
-            }
-            return (BinaryObjectInspector) argOI;
         }
 
         @Override
@@ -98,17 +87,33 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
 
         @SuppressWarnings("deprecation")
         @Override
-        public void iterate(@Nonnull AggregationBuffer agg, @Nonnull Object[] parameters)
-                throws HiveException {
+        public void iterate(@Nonnull AggregationBuffer agg, @Nonnull Object[] parameters) throws HiveException {
             if (parameters[0] == null) {
                 return;
             }
 
             HLLBuffer buf = (HLLBuffer) agg;
-            Object value =
-                    ObjectInspectorUtils.copyToStandardJavaObject(parameters[0], origInputOI);
+            Object value = ObjectInspectorUtils.copyToStandardJavaObject(parameters[0], origInputOI);
             Preconditions.checkNotNull(buf.hll, HiveException.class);
-            buf.hll.offer(value);
+            Slice data;
+            if (value instanceof Integer) {
+                data = Slices.wrappedIntArray((Integer) value);
+            } else if (value instanceof Long) {
+                data = Slices.wrappedLongArray((Long) value);
+            } else if (value instanceof Short) {
+                data = Slices.wrappedShortArray((Short) value);
+            } else if (value instanceof Double) {
+                data = Slices.wrappedDoubleArray((Double) value);
+            } else if (value instanceof Float) {
+                data = Slices.wrappedFloatArray((Float) value);
+            } else if (value instanceof String) {
+                data = Slices.utf8Slice((String) value);
+            } else if (value instanceof byte[]) {
+                data = Slices.wrappedBuffer((byte[]) value);
+            } else {
+                throw new HiveException(String.format("Cannot cast parameter: %s", value.getClass()));
+            }
+            buf.hll.add(data);
         }
 
         @SuppressWarnings("deprecation")
@@ -119,52 +124,26 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
             if (buf.hll == null) {
                 return null;
             }
-            try {
-                return buf.hll.getBytes();
-            } catch (IOException e) {
-                throw new HiveException(e);
-            }
+            return buf.hll.serialize().getBytes();
         }
 
         @SuppressWarnings("deprecation")
         @Override
-        public void merge(@Nonnull AggregationBuffer agg, @Nullable Object partial)
-                throws HiveException {
+        public void merge(@Nonnull AggregationBuffer agg, @Nullable Object partial) throws HiveException {
             if (partial == null) {
                 return;
             }
 
             byte[] data = mergeInputOI.getPrimitiveJavaObject(partial);
-            final HyperLogLogPlus otherHLL;
-            try {
-                otherHLL = HyperLogLogPlus.Builder.build(data);
-            } catch (IOException e) {
-                throw new HiveException("Failed to build other HLL");
-            }
-
             final HLLBuffer buf = (HLLBuffer) agg;
-            if (buf.hll == null) {
-                buf.hll = otherHLL;
-            } else {
-                try {
-                    buf.hll.addAll(otherHLL);
-                } catch (CardinalityMergeException e) {
-                    throw new HiveException("Failed to merge HLL");
-                }
-            }
+            Utils.mergeHll(buf, data);
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public BytesWritable terminate(@Nonnull AggregationBuffer agg) throws HiveException {
             HLLBuffer buf = (HLLBuffer) agg;
-
-            byte[] state;
-            try {
-                state = (buf.hll == null) ? new byte[0] : buf.hll.getBytes();
-            } catch (IOException e) {
-                throw new HiveException(e);
-            }
+            byte[] state = (buf.hll == null) ? new byte[0] : buf.hll.serialize().getBytes();
             return new BytesWritable(state);
         }
 

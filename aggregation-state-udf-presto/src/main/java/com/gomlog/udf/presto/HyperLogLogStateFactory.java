@@ -8,8 +8,9 @@ import com.facebook.presto.array.ObjectBigArray;
 import com.facebook.presto.spi.function.AccumulatorStateFactory;
 import com.facebook.presto.spi.function.GroupedAccumulatorState;
 
-public class HyperLogLogStateFactory
-        implements AccumulatorStateFactory<HyperLogLogState> {
+import io.airlift.stats.cardinality.HyperLogLog;
+
+public class HyperLogLogStateFactory implements AccumulatorStateFactory<HyperLogLogState> {
     @Override
     public HyperLogLogState createSingleState() {
         return new SingleHyperLogLogState();
@@ -30,11 +31,10 @@ public class HyperLogLogStateFactory
         return GroupedHyperLogLogState.class;
     }
 
-    public static class GroupedHyperLogLogState
-            implements GroupedAccumulatorState, HyperLogLogState {
+    public static class GroupedHyperLogLogState implements GroupedAccumulatorState, HyperLogLogState {
         private static final int INSTANCE_SIZE = ClassLayout.parseClass(GroupedHyperLogLogState.class)
                                                             .instanceSize();
-        private final ObjectBigArray<HLLBuffer> hlls = new ObjectBigArray<>();
+        private final ObjectBigArray<HyperLogLog> hlls = new ObjectBigArray<>();
         private long size;
         private long groupId;
 
@@ -53,12 +53,12 @@ public class HyperLogLogStateFactory
         }
 
         @Override
-        public HLLBuffer getHyperLogLog() {
+        public HyperLogLog getHyperLogLog() {
             return hlls.get(getGroupId());
         }
 
         @Override
-        public void setHyperLogLog(HLLBuffer value) {
+        public void setHyperLogLog(HyperLogLog value) {
             requireNonNull(value, "value is null");
             hlls.set(getGroupId(), value);
         }
@@ -74,32 +74,31 @@ public class HyperLogLogStateFactory
         }
     }
 
-    public static class SingleHyperLogLogState
-            implements HyperLogLogState {
+    public static class SingleHyperLogLogState implements HyperLogLogState {
         private static final int INSTANCE_SIZE = ClassLayout.parseClass(SingleHyperLogLogState.class)
                                                             .instanceSize();
-        private HLLBuffer hll;
+        private HyperLogLog hll;
 
         @Override
-        public HLLBuffer getHyperLogLog() {
+        public HyperLogLog getHyperLogLog() {
             return hll;
         }
 
         @Override
-        public void setHyperLogLog(HLLBuffer value) {
+        public void setHyperLogLog(HyperLogLog value) {
             hll = value;
         }
 
         @Override
         public void addMemoryUsage(int value) {
-            // noop
+            // No implementation
         }
 
         @Override
         public long getEstimatedSize() {
             long estimatedSize = INSTANCE_SIZE;
             if (hll != null) {
-                estimatedSize += hll.sizeof();
+                estimatedSize += hll.estimatedInMemorySize();
             }
             return estimatedSize;
         }

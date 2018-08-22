@@ -10,7 +10,9 @@ group "com.gomlog.udf.hive"
 ext {
     hadoopVersion = "2.7.3"
     hiveVersion = "1.2.1"
-    streamVersion = "2.9.6"
+    statsVersion = "0.172"
+    sliceVersion = "0.36"
+    guavaVersion = 24.1
     lombokVersion = "1.18.2"
 }
 
@@ -20,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    compile "com.clearspring.analytics:stream:${streamVersion}"
+    compile "io.airlift:stats:${statsVersion}"
 
     compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
     compileOnly "org.apache.hive:hive-exec:${hiveVersion}"
@@ -29,3 +31,6 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
+shadowJar {
+    relocate 'com.google.common', 'shaded.com.google.common'
+}

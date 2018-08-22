@@ -1,7 +1,5 @@
 package com.gomlog.udf.hive;
 
-import java.io.IOException;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -20,8 +18,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.io.LongWritable;
 
-import com.clearspring.analytics.stream.cardinality.CardinalityMergeException;
-import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
 import com.google.common.base.Preconditions;
 
 @Description(name = "approx_distinct_merge", value = "_FUNC_(expr x)"
@@ -59,7 +55,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             super.init(mode, parameters);
 
             // initialize input
-            this.inputOI = asBinaryOI(parameters[0]);
+            this.inputOI = Utils.asBinaryOI(parameters[0]);
 
             // initialize output
             final ObjectInspector outputOI;
@@ -71,15 +67,6 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             return outputOI;
         }
 
-        @Nonnull
-        private BinaryObjectInspector asBinaryOI(@Nonnull final ObjectInspector argOI)
-                throws UDFArgumentException {
-            if (!"binary".equals(argOI.getTypeName())) {
-                throw new UDFArgumentException("Argument type must be Binary: " + argOI.getTypeName());
-            }
-            return (BinaryObjectInspector) argOI;
-        }
-
         @Override
         public HLLBuffer getNewAggregationBuffer() throws HiveException {
             return new HLLBuffer();
@@ -89,7 +76,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
         @Override
         public void reset(@Nonnull AggregationBuffer agg) throws HiveException {
             HLLBuffer buf = (HLLBuffer) agg;
-            buf.hll = null;
+            buf.reset();
         }
 
         @SuppressWarnings("deprecation")
@@ -103,7 +90,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             HLLBuffer buf = (HLLBuffer) agg;
             byte[] data = inputOI.getPrimitiveJavaObject(parameters[0]);
             Preconditions.checkNotNull(buf.hll, HiveException.class);
-            mergeHll(buf, data);
+            Utils.mergeHll(buf, data);
         }
 
         @SuppressWarnings("deprecation")
@@ -114,11 +101,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
             if (buf.hll == null) {
                 return null;
             }
-            try {
-                return buf.hll.getBytes();
-            } catch (IOException e) {
-                throw new HiveException(e);
-            }
+            return buf.hll.serialize().getBytes();
         }
 
         @SuppressWarnings("deprecation")
@@ -131,26 +114,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
 
             byte[] data = inputOI.getPrimitiveJavaObject(partial);
             final HLLBuffer buf = (HLLBuffer) agg;
-            mergeHll(buf, data);
-        }
-
-        private void mergeHll(HLLBuffer orig, byte[] otherData) throws HiveException {
-            final HyperLogLogPlus otherHLL;
-            try {
-                otherHLL = HyperLogLogPlus.Builder.build(otherData);
-            } catch (IOException e) {
-                throw new HiveException("Failed to build other HLL");
-            }
-
-            if (orig.hll == null) {
-                orig.hll = otherHLL;
-            } else {
-                try {
-                    orig.hll.addAll(otherHLL);
-                } catch (CardinalityMergeException e) {
-                    throw new HiveException("Failed to merge HLL");
-                }
-            }
+            Utils.mergeHll(buf, data);
         }
 
         @SuppressWarnings("deprecation")

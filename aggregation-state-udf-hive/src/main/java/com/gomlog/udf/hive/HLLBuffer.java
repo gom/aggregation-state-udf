@@ -1,32 +1,29 @@
 package com.gomlog.udf.hive;
 
-import javax.annotation.Nonnegative;
 import javax.annotation.Nullable;
 
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator.AbstractAggregationBuffer;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator.AggregationType;
 
-import com.clearspring.analytics.stream.cardinality.HyperLogLogPlus;
+import io.airlift.stats.cardinality.HyperLogLog;
 
 @AggregationType(estimable = true)
 final class HLLBuffer extends AbstractAggregationBuffer {
-    private static final int DEFAULT_P = 15;
-    private static final int DEFAULT_SP = 25;
+    private static final int DEFAULT_BUCKET_SIZE = 2048;
 
     @Nullable
-    HyperLogLogPlus hll;
+    HyperLogLog hll;
 
     HLLBuffer() {
-        this.hll = new HyperLogLogPlus.Builder(DEFAULT_P, DEFAULT_SP).build();
+        this.hll = HyperLogLog.newInstance(DEFAULT_BUCKET_SIZE);
     }
 
     @Override
     public int estimate() {
-        return (hll == null) ? 0 : hll.sizeof();
+        return (hll == null) ? 0 : hll.estimatedInMemorySize();
     }
 
-    void reset(@Nonnegative int p, @Nonnegative int sp) {
-        this.hll = new HyperLogLogPlus(p, sp);
+    void reset() {
+        this.hll = HyperLogLog.newInstance(DEFAULT_BUCKET_SIZE);
     }
-
 }
