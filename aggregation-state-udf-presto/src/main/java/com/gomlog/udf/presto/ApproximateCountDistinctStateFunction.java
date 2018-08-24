@@ -66,7 +66,7 @@ public final class ApproximateCountDistinctStateFunction {
     @LiteralParameters("x")
     public static void input(@AggregationState HyperLogLogState state, @SqlType("varchar(x)") Slice value,
                              @SqlType(StandardTypes.DOUBLE) double maxStandardError) {
-        input(state, value, maxStandardError);
+        inputBinary(state, value, maxStandardError);
     }
 
     @InputFunction

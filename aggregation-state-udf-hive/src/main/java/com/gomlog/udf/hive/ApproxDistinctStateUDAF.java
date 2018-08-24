@@ -82,7 +82,7 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
         @Override
         public void reset(@Nonnull AggregationBuffer agg) throws HiveException {
             HLLBuffer buf = (HLLBuffer) agg;
-            buf.hll = null;
+            buf.reset();
         }
 
         @SuppressWarnings("deprecation")
