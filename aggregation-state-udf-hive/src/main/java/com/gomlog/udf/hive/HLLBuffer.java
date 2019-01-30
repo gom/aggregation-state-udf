@@ -1,7 +1,5 @@
 package com.gomlog.udf.hive;
 
-import javax.annotation.Nullable;
-
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator.AbstractAggregationBuffer;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDAFEvaluator.AggregationType;
 
@@ -9,9 +7,8 @@ import io.airlift.stats.cardinality.HyperLogLog;
 
 @AggregationType(estimable = true)
 final class HLLBuffer extends AbstractAggregationBuffer {
-    private static final int DEFAULT_BUCKET_SIZE = 2048;
+    private static final int DEFAULT_BUCKET_SIZE = 4096;
 
-    @Nullable
     HyperLogLog hll;
 
     HLLBuffer() {
