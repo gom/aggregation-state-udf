@@ -10,9 +10,9 @@ group "com.gomlog.udf.hive"
 ext {
     hadoopVersion = "2.7.3"
     hiveVersion = "1.2.1"
-    statsVersion = "0.172"
+    statsVersion = "0.178"
     sliceVersion = "0.36"
-    guavaVersion = 24.1
+    guavaVersion = "27.0.1"
     lombokVersion = "1.18.2"
 }
 
