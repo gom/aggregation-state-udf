@@ -5,7 +5,6 @@ import javax.annotation.Nullable;
 
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.MapredContext;
-import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentTypeException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
@@ -25,8 +24,7 @@ import com.google.common.base.Preconditions;
 public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
 
     @Override
-    public GenericUDAFEvaluator getEvaluator(@Nonnull TypeInfo[] typeInfo)
-            throws SemanticException {
+    public GenericUDAFEvaluator getEvaluator(@Nonnull TypeInfo[] typeInfo) throws SemanticException {
         if (typeInfo.length != 1) {
             throw new UDFArgumentTypeException(typeInfo.length - 1,
                                                "_FUNC_ takes one argument");
@@ -48,10 +46,9 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
         private BinaryObjectInspector inputOI;
 
         @Override
-        public ObjectInspector init(@Nonnull Mode mode, @Nonnull ObjectInspector[] parameters)
-                throws HiveException {
-            assert(parameters.length == 1) : parameters.length;
-            assert(parameters[0].getCategory() == Category.PRIMITIVE);
+        public ObjectInspector init(@Nonnull Mode mode, @Nonnull ObjectInspector[] parameters) throws HiveException {
+            assert (parameters.length == 1) : parameters.length;
+            assert (parameters[0].getCategory() == Category.PRIMITIVE);
             super.init(mode, parameters);
 
             // initialize input
@@ -81,8 +78,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
 
         @SuppressWarnings("deprecation")
         @Override
-        public void iterate(@Nonnull AggregationBuffer agg, @Nonnull Object[] parameters)
-                throws HiveException {
+        public void iterate(@Nonnull AggregationBuffer agg, @Nonnull Object[] parameters) throws HiveException {
             if (parameters[0] == null) {
                 return;
             }
@@ -106,8 +102,7 @@ public final class ApproxDistinctMergeUDAF extends AbstractGenericUDAFResolver {
 
         @SuppressWarnings("deprecation")
         @Override
-        public void merge(@Nonnull AggregationBuffer agg, @Nullable Object partial)
-                throws HiveException {
+        public void merge(@Nonnull AggregationBuffer agg, @Nullable Object partial) throws HiveException {
             if (partial == null) {
                 return;
             }

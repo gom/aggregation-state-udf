@@ -51,8 +51,7 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
         private BinaryObjectInspector mergeInputOI;
 
         @Override
-        public ObjectInspector init(@Nonnull Mode mode, @Nonnull ObjectInspector[] parameters)
-                throws HiveException {
+        public ObjectInspector init(@Nonnull Mode mode, @Nonnull ObjectInspector[] parameters) throws HiveException {
             assert (parameters.length == 1 || parameters.length == 2) : parameters.length;
             super.init(mode, parameters);
 
@@ -95,6 +94,11 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
             HLLBuffer buf = (HLLBuffer) agg;
             Object value = ObjectInspectorUtils.copyToStandardJavaObject(parameters[0], origInputOI);
             Preconditions.checkNotNull(buf.hll, HiveException.class);
+
+            buf.hll.add(objToSlice(value));
+        }
+
+        private Slice objToSlice(Object value) throws HiveException {
             Slice data;
             if (value instanceof Integer) {
                 data = Slices.wrappedIntArray((Integer) value);
@@ -113,7 +117,7 @@ public final class ApproxDistinctStateUDAF extends AbstractGenericUDAFResolver {
             } else {
                 throw new HiveException(String.format("Cannot cast parameter: %s", value.getClass()));
             }
-            buf.hll.add(data);
+            return data;
         }
 
         @SuppressWarnings("deprecation")
