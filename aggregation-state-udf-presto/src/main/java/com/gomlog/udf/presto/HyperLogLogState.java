@@ -1,7 +1,7 @@
 package com.gomlog.udf.presto;
 
-import com.facebook.presto.spi.function.AccumulatorState;
-import com.facebook.presto.spi.function.AccumulatorStateMetadata;
+import io.prestosql.spi.function.AccumulatorState;
+import io.prestosql.spi.function.AccumulatorStateMetadata;
 
 import io.airlift.stats.cardinality.HyperLogLog;
 import lombok.NonNull;

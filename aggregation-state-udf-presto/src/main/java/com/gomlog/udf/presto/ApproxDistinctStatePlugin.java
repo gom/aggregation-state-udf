@@ -2,8 +2,9 @@ package com.gomlog.udf.presto;
 
 import java.util.Set;
 
-import com.facebook.presto.spi.Plugin;
 import com.google.common.collect.ImmutableSet;
+
+import io.prestosql.spi.Plugin;
 
 public class ApproxDistinctStatePlugin implements Plugin {
     @Override

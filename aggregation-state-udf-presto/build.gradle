@@ -8,18 +8,18 @@ sourceCompatibility = 1.8
 group "com.gomlog.udf.presto"
 
 ext {
-    prestoVersion = 0.208
+    prestoVersion = 301
     guavaVersion = 24.1
-    statsVersion = "0.172"
+    statsVersion = "0.178"
     lombokVersion = "1.18.2"
 }
 
 dependencies {
-    compile "com.facebook.presto:presto-array:${prestoVersion}"
+    compile "io.prestosql:presto-array:${prestoVersion}"
     compile "com.google.guava:guava:${guavaVersion}-jre"
     compile "io.airlift:stats:${statsVersion}"
 
-    compileOnly "com.facebook.presto:presto-spi:${prestoVersion}"
+    compileOnly "io.prestosql:presto-spi:${prestoVersion}"
 
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     testCompile group: 'junit', name: 'junit', version: '4.12'

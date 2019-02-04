@@ -4,9 +4,9 @@ import static java.util.Objects.requireNonNull;
 
 import org.openjdk.jol.info.ClassLayout;
 
-import com.facebook.presto.array.ObjectBigArray;
-import com.facebook.presto.spi.function.AccumulatorStateFactory;
-import com.facebook.presto.spi.function.GroupedAccumulatorState;
+import io.prestosql.array.ObjectBigArray;
+import io.prestosql.spi.function.AccumulatorStateFactory;
+import io.prestosql.spi.function.GroupedAccumulatorState;
 
 import io.airlift.stats.cardinality.HyperLogLog;
 
